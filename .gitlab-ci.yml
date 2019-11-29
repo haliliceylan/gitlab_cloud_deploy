@@ -1,0 +1,42 @@
+stages:
+- release
+
+variables:
+  AWS_IMAGE_TAG: aws:latest
+
+.docker: &docker
+  image: docker:19.03-git
+  services:
+    - docker:19.03-dind
+  variables:
+    DOCKER_DRIVER: overlay2
+
+.release_base: &release_base
+  <<: *docker
+  variables: &release_base_variables
+    TARGET_DOCKERFILE: aws/Dockerfile
+    TARGET_IMAGE_TAG: $AWS_IMAGE_TAG
+  script:
+    - source ./ci/build_image
+
+# Release stage
+
+development release AWS image:
+  <<: *release_base
+  stage: release
+  variables:
+    <<: *release_base_variables
+    PUSH_TO_REGISTRY: "false"
+  only:
+  - branches@gitlab-org/cloud-deploy
+
+
+release AWS image:
+  <<: *release_base
+  stage: release
+  variables:
+    <<: *release_base_variables
+    PUSH_TO_REGISTRY: "true"
+  only:
+  - master@gitlab-org/cloud-deploy
+
