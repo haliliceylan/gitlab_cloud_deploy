@@ -1,4 +1,5 @@
 stages:
+- prepare
 - release
 
 variables:
@@ -18,6 +19,13 @@ variables:
     TARGET_IMAGE_TAG: $AWS_IMAGE_TAG
   script:
     - source ./ci/build_image
+
+# Prepare stage
+
+prepare image build:
+  stage: prepare
+  script:
+    - source ./ci/prepare
 
 # Release stage
 

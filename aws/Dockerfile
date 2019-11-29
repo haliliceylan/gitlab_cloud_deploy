@@ -13,6 +13,10 @@ ENV PATH="/root/.local/bin:${PATH}"
 # Install awscli
 RUN pip3 install awscli --upgrade --user
 
-# Install eksctl
-RUN curl --silent --location "https://github.com/weaveworks/eksctl/releases/download/latest_release/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
-RUN mv /tmp/eksctl /usr/local/bin
+# Install kubectl
+ARG KUBECTL_VERSION
+
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl && \
+    chmod +x ./kubectl && \
+    mv ./kubectl /usr/local/bin/kubectl
+
