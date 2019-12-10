@@ -1,5 +1,6 @@
 stages:
 - build
+- test
 - release
 
 variables:
@@ -23,6 +24,13 @@ image build:
   script:
     - docker build -t "$BUILD_IMAGE_NAME" -f "$TARGET_DOCKERFILE" .
     - docker push "$BUILD_IMAGE_NAME"
+
+# Test stage
+
+test aws command:
+  stage: test
+  image: $BUILD_IMAGE_NAME
+  script: aws --version
 
 # Release stage
 
