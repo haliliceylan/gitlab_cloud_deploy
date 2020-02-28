@@ -1,5 +1,7 @@
 FROM alpine:3.10
 
+COPY aws/src/ build/
+
 # Install packages
 RUN apk update
 RUN apk add --no-cache py3-pip curl
@@ -11,3 +13,4 @@ RUN pip3 install awscli --upgrade
 RUN curl -o /usr/local/bin/ecs-cli https://amazon-ecs-cli.s3.amazonaws.com/ecs-cli-linux-amd64-latest && \
     chmod +x /usr/local/bin/ecs-cli
 
+RUN ln -s /build/bin/* /usr/local/bin/

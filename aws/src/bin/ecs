@@ -1,0 +1,13 @@
+#!/bin/sh
+
+describe_cluster() {
+  info=$(aws ecs describe-clusters --clusters "$2")
+  echo $info
+}
+
+option=$1
+case $option in
+
+  describe-cluster) describe_cluster "${@:2}" ;;
+  *) exit 1 ;;
+esac
