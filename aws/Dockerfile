@@ -4,7 +4,7 @@ COPY aws/src/ build/
 
 # Install packages
 RUN apk update
-RUN apk add --no-cache py3-pip curl
+RUN apk add --no-cache py3-pip curl jq
 
 # Install awscli
 RUN pip3 install awscli --upgrade
