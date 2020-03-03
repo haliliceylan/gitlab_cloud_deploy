@@ -1,24 +1,43 @@
 #!/bin/sh
 
 update_task_definition() {
-  family=$2
+  ensure_params
+
   new_image_name=$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
 
-  current_task=$(aws ecs describe-task-definition --task-definition "$family")
+  current_task=$(aws ecs describe-task-definition --task-definition "$TASK_DEFINITION")
+  task_memory=$(echo $current_task | jq '.taskDefinition.memory' | bc)
   current_container_definitions=$(echo $current_task | jq '.taskDefinition.containerDefinitions')
   new_container_definitions=$(echo $current_container_definitions | jq --arg val $new_image_name '.[0].image = $val')
 
-  new_task_definition=$(aws ecs register-task-definition --container-definitions "$new_container_definitions" --family "$family" --memory $MEMORY)
+  new_task_definition=$(aws ecs register-task-definition --container-definitions "$new_container_definitions" --family "$TASK_DEFINITION" --memory "$task_memory")
 
   new_task_revision=$(echo $new_task_definition | jq '.taskDefinition.revision')
 
-  aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --task-definition "$family":"$new_task_revision"
+  aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --task-definition "$TASK_DEFINITION":"$new_task_revision"
   return 0
+}
+
+ensure_params() {
+  if [ -z "$CLUSTER" ]; then
+    echo "Please set up a CLUSTER variable to your CI job with the name of the AWS ECS cluster you are targetting for deployment."
+    exit 1
+  fi
+
+  if [ -z "$SERVICE" ]; then
+    echo "Please set up a SERVICE variable to your CI job with the name of the service your AWS ECS cluster uses."
+    exit 1
+  fi
+
+  if [ -z "$TASK_DEFINITION" ]; then
+    echo "Please set up a TASK_DEFINITION variable to your CI job with the name of you AWS ECS task definition as a value"
+    exit 1
+  fi
 }
 
 option=$1
 case $option in
 
-  update-task-definition) update_task_definition "${@:2}" ;;
+  update-task-definition) update_task_definition ;;
   *) exit 1 ;;
 esac
