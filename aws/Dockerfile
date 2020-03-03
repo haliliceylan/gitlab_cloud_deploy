@@ -1,7 +1,6 @@
 FROM alpine:3.10
 
-COPY aws/src/ /build/
-RUN ln -s /build/bin/* /usr/local/bin/
+COPY aws/src/bin/* /usr/local/bin/
 
 # Install packages
 RUN apk update

@@ -10,17 +10,19 @@ update_task_definition() {
   current_container_definitions=$(echo $current_task | jq '.taskDefinition.containerDefinitions')
   new_container_definitions=$(echo $current_container_definitions | jq --arg val $new_image_name '.[0].image = $val')
 
+  # Create new revision of the task definition, with updated image revision.
   new_task_definition=$(aws ecs register-task-definition --container-definitions "$new_container_definitions" --family "$TASK_DEFINITION" --memory "$task_memory")
 
   new_task_revision=$(echo $new_task_definition | jq '.taskDefinition.revision')
 
+  # Update ECS service with newly created task defintion revision
   aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --task-definition "$TASK_DEFINITION":"$new_task_revision"
   return 0
 }
 
 ensure_params() {
   if [ -z "$CLUSTER" ]; then
-    echo "Please set up a CLUSTER variable to your CI job with the name of the AWS ECS cluster you are targetting for deployment."
+    echo "Please set up a CLUSTER variable to your CI job with the name of the AWS ECS cluster your are targetting for deployment."
     exit 1
   fi
 
@@ -30,7 +32,7 @@ ensure_params() {
   fi
 
   if [ -z "$TASK_DEFINITION" ]; then
-    echo "Please set up a TASK_DEFINITION variable to your CI job with the name of you AWS ECS task definition as a value"
+    echo "Please set up a TASK_DEFINITION variable to your CI job with the name of your AWS ECS task definition as a value."
     exit 1
   fi
 }

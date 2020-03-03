@@ -32,7 +32,6 @@ test aws command:
   image: $BUILD_IMAGE_NAME
   script: 
     - aws --version
-    - ecs-cli --version
 
 # Release stage
 
