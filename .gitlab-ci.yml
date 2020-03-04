@@ -30,8 +30,7 @@ image build:
 test aws command:
   stage: test
   image: $BUILD_IMAGE_NAME
-  script: 
-    - aws --version
+  script: aws --version
 
 # Release stage
 

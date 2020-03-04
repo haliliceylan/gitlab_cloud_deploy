@@ -3,43 +3,53 @@
 update_task_definition() {
   ensure_params
 
-  new_image_name=$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  # Resolve application image location.
+  local image_repository
+  local image_tag
 
-  current_task=$(aws ecs describe-task-definition --task-definition "$TASK_DEFINITION")
+  if [[ -z "$CI_COMMIT_TAG" ]]; then
+    image_repository=${CI_APPLICATION_REPOSITORY:-$CI_REGISTRY_IMAGE/$CI_COMMIT_REF_SLUG}
+    image_tag=${CI_APPLICATION_TAG:-$CI_COMMIT_SHA}
+  else
+    image_repository=${CI_APPLICATION_REPOSITORY:-$CI_REGISTRY_IMAGE}
+    image_tag=${CI_APPLICATION_TAG:-$CI_COMMIT_TAG}
+  fi
+
+  new_image_name="${image_repository}:${image_tag}"
+  current_task=$(aws ecs describe-task-definition --task-definition "$CI_AWS_ECS_TASK_DEFINITION")
   task_memory=$(echo $current_task | jq '.taskDefinition.memory' | bc)
   current_container_definitions=$(echo $current_task | jq '.taskDefinition.containerDefinitions')
   new_container_definitions=$(echo $current_container_definitions | jq --arg val $new_image_name '.[0].image = $val')
 
   # Create new revision of the task definition, with updated image revision.
-  new_task_definition=$(aws ecs register-task-definition --container-definitions "$new_container_definitions" --family "$TASK_DEFINITION" --memory "$task_memory")
+  new_task_definition=$(aws ecs register-task-definition --container-definitions "$new_container_definitions" --family "$CI_AWS_ECS_TASK_DEFINITION" --memory "$task_memory")
 
   new_task_revision=$(echo $new_task_definition | jq '.taskDefinition.revision')
 
-  # Update ECS service with newly created task defintion revision
-  aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --task-definition "$TASK_DEFINITION":"$new_task_revision"
+  # Update ECS service with newly created task defintion revision.
+  aws ecs update-service --cluster "$CI_AWS_ECS_CLUSTER" --service "$CI_AWS_ECS_SERVICE" --task-definition "$CI_AWS_ECS_TASK_DEFINITION":"$new_task_revision"
   return 0
 }
 
 ensure_params() {
-  if [ -z "$CLUSTER" ]; then
-    echo "Please set up a CLUSTER variable to your CI job with the name of the AWS ECS cluster your are targetting for deployment."
+  if [ -z "$CI_AWS_ECS_CLUSTER" ]; then
+    echo "Please set up a CI_AWS_ECS_CLUSTER variable to your CI job with the name of the AWS ECS cluster your are targetting for deployment."
     exit 1
   fi
 
-  if [ -z "$SERVICE" ]; then
-    echo "Please set up a SERVICE variable to your CI job with the name of the service your AWS ECS cluster uses."
+  if [ -z "$CI_AWS_ECS_SERVICE" ]; then
+    echo "Please set up a CI_AWS_ECS_SERVICE variable to your CI job with the name of the service your AWS ECS cluster uses."
     exit 1
   fi
 
-  if [ -z "$TASK_DEFINITION" ]; then
-    echo "Please set up a TASK_DEFINITION variable to your CI job with the name of your AWS ECS task definition as a value."
+  if [ -z "$CI_AWS_ECS_TASK_DEFINITION" ]; then
+    echo "Please set up a CI_AWS_ECS_TASK_DEFINITION variable to your CI job with the name of your AWS ECS task definition as a value."
     exit 1
   fi
 }
 
 option=$1
 case $option in
-
   update-task-definition) update_task_definition ;;
   *) exit 1 ;;
 esac
