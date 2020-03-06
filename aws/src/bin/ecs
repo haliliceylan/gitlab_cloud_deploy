@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash -e
 
 update_task_definition() {
   ensure_params
@@ -6,7 +6,15 @@ update_task_definition() {
   # Resolve application image location.
   local image_repository
   local image_tag
+  local new_image_name
+  local current_task
+  local task_memory
+  local current_container_definitions
+  local new_container_definitions
+  local new_task_definition
+  local new_task_revision
 
+  # The following CI variables are defined in the Auto Build template (https://gitlab.com/gitlab-org/gitlab-foss/blob/master/lib/gitlab/ci/templates/Jobs/Build.gitlab-ci.yml).
   if [[ -z "$CI_COMMIT_TAG" ]]; then
     image_repository=${CI_APPLICATION_REPOSITORY:-$CI_REGISTRY_IMAGE/$CI_COMMIT_REF_SLUG}
     image_tag=${CI_APPLICATION_TAG:-$CI_COMMIT_SHA}
@@ -17,14 +25,14 @@ update_task_definition() {
 
   new_image_name="${image_repository}:${image_tag}"
   current_task=$(aws ecs describe-task-definition --task-definition "$CI_AWS_ECS_TASK_DEFINITION")
-  task_memory=$(echo $current_task | jq '.taskDefinition.memory' | bc)
-  current_container_definitions=$(echo $current_task | jq '.taskDefinition.containerDefinitions')
-  new_container_definitions=$(echo $current_container_definitions | jq --arg val $new_image_name '.[0].image = $val')
+  task_memory=$(echo "$current_task" | jq '.taskDefinition.memory' | bc)
+  current_container_definitions=$(echo "$current_task" | jq '.taskDefinition.containerDefinitions')
+  new_container_definitions=$(echo "$current_container_definitions" | jq --arg val "$new_image_name" '.[0].image = $val')
 
   # Create new revision of the task definition, with updated image revision.
   new_task_definition=$(aws ecs register-task-definition --container-definitions "$new_container_definitions" --family "$CI_AWS_ECS_TASK_DEFINITION" --memory "$task_memory")
 
-  new_task_revision=$(echo $new_task_definition | jq '.taskDefinition.revision')
+  new_task_revision=$(echo "$new_task_definition" | jq '.taskDefinition.revision')
 
   # Update ECS service with newly created task defintion revision.
   aws ecs update-service --cluster "$CI_AWS_ECS_CLUSTER" --service "$CI_AWS_ECS_SERVICE" --task-definition "$CI_AWS_ECS_TASK_DEFINITION":"$new_task_revision"

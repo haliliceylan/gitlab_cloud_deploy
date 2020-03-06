@@ -26,6 +26,13 @@ image build:
     - docker push "$BUILD_IMAGE_NAME"
 
 # Test stage
+shell check:
+  image: koalaman/shellcheck-alpine:stable
+  stage: test
+  before_script:
+    - shellcheck --version
+  script:
+    - shellcheck aws/src/bin/*
 
 test aws command:
   stage: test
