@@ -6,9 +6,9 @@ Docker images for deployments on major cloud platforms (GDC, Azure, AWS)
 
 | Service  | Implemented  |  Details |
 |-------|-----|---|
-| AWS   | ✔  | AWS CLI (version 1.x)  |
-| Azure | ❌  |   |
-| GDC   | ❌  |   |
+| AWS   | :heavy_check_mark:  | AWS CLI (version 1.x)  |
+| Azure | :x:  |   |
+| GDC   | :x:  |   |
 
 The following projects depend on `cloud-deploy`:
 - [Status Page](https://gitlab.com/gitlab-org/status-page)
