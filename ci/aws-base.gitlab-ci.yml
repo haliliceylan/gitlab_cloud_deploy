@@ -1,0 +1,17 @@
+variables:
+  IMAGE_NAME: aws-base
+
+build_aws_base_image:
+  extends: .build
+  stage: build_base
+  script:
+    - docker build -t "$BUILD_IMAGE_NAME" -f "aws/base/Dockerfile" .
+
+test aws command:
+  extends: .test-command
+  script: 
+    - aws --version
+    - jq --version
+
+release aws base:
+  extends: .release-tag

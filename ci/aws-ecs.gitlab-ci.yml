@@ -1,0 +1,17 @@
+variables:
+  IMAGE_NAME: aws-ecs
+
+build aws ecs image:
+  extends: .build
+  stage: build
+  script:
+    - docker build -t "$BUILD_IMAGE_NAME" -f "aws/ecs/Dockerfile" --build-arg BASE_VERSION="$CI_COMMIT_SHA" .
+  dependencies:
+    - build_aws_base_image
+
+test aws ecs command:
+  extends: .test-command
+  script: aws ecs help
+
+release aws ecs:
+  extends: .release-tag

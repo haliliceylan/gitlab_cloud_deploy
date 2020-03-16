@@ -1,11 +1,11 @@
 stages:
+- build_base
 - build
 - test
 - release
 
 variables:
-  BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/$CI_COMMIT_REF_SLUG:$CI_COMMIT_SHA"
-  TARGET_DOCKERFILE: aws/Dockerfile
+  BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHA"
 
 .docker: &docker
   image: docker:19.03-git
@@ -14,15 +14,11 @@ variables:
   variables:
     DOCKER_DRIVER: overlay2
 
-# Build stage
-
-image build:
+.build: &build
   <<: *docker
-  stage: build
   before_script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
-  script:
-    - docker build -t "$BUILD_IMAGE_NAME" -f "$TARGET_DOCKERFILE" .
+  after_script:
     - docker push "$BUILD_IMAGE_NAME"
 
 # Test stage
@@ -34,7 +30,7 @@ shell check:
   script:
     - shellcheck aws/src/bin/*
 
-test commands:
+.test-command: &test-command
   stage: test
   image: $BUILD_IMAGE_NAME
   script: 
@@ -44,17 +40,20 @@ test commands:
     - bc --version
 
 # Release stage
-
-release-tag:
+.release-tag: &release-tag
   <<: *docker
   stage: release
   script:
     - 'echo ${CI_JOB_TOKEN} | docker login --password-stdin -u $CI_REGISTRY_USER $CI_REGISTRY'
     - echo "Using tag $CI_COMMIT_TAG for image"
     - docker pull "$BUILD_IMAGE_NAME"
-    - docker tag "$BUILD_IMAGE_NAME" "$CI_REGISTRY_IMAGE:latest"
-    - docker tag "$BUILD_IMAGE_NAME" "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
+    - docker tag "$BUILD_IMAGE_NAME" "$CI_REGISTRY_IMAGE/$IMAGE_NAME:latest"
+    - docker tag "$BUILD_IMAGE_NAME" "$CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_TAG"
     - docker push "$CI_REGISTRY_IMAGE:latest"
     - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
   only:
     - tags
+
+include:
+  - local: /ci/aws-base.gitlab-ci.yml
+  - local: /ci/aws-ecs.gitlab-ci.yml

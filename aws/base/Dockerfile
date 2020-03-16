@@ -1,7 +1,5 @@
 FROM ubuntu:latest
 
-COPY aws/src/bin/* /usr/local/bin/
-
 # Install packages
 RUN apt-get update -y && apt-get install -y curl unzip groff jq bc
 
