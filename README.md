@@ -6,7 +6,7 @@ Docker images for deployments on major cloud platforms (GDC, Azure, AWS)
 
 | Service  | Implemented  |  Details |
 |-------|-----|---|
-| AWS   | :heavy_check_mark:  | AWS CLI (version 1.x)  |
+| AWS   | :heavy_check_mark:  | AWS CLI (version 2.x)  |
 | Azure | :x:  |   |
 | GDC   | :x:  |   |
 
