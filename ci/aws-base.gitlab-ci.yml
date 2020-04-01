@@ -1,4 +1,4 @@
-build_aws_base_image:
+build aws base image:
   extends: .build
   stage: build_base
   variables:
@@ -18,3 +18,4 @@ release aws base:
   extends: .release-tag
   variables:
     BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/aws-base:$CI_COMMIT_SHA"
+    IMAGE_NAME_FOR_REGISTRY: "$CI_REGISTRY_IMAGE/aws-base"
