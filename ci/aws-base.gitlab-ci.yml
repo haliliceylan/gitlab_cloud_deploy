@@ -1,17 +1,20 @@
-variables:
-  IMAGE_NAME: aws-base
-
 build_aws_base_image:
   extends: .build
   stage: build_base
+  variables:
+    BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/aws-base:$CI_COMMIT_SHA"
   script:
     - docker build -t "$BUILD_IMAGE_NAME" -f "aws/base/Dockerfile" .
 
 test aws command:
   extends: .test-command
+  variables:
+    BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/aws-base:$CI_COMMIT_SHA"
   script: 
     - aws --version
     - jq --version
 
 release aws base:
   extends: .release-tag
+  variables:
+    BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/aws-base:$CI_COMMIT_SHA"

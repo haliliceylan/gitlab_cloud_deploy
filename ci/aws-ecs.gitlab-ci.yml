@@ -1,9 +1,8 @@
-variables:
-  IMAGE_NAME: aws-ecs
-
 build aws ecs image:
   extends: .build
   stage: build
+  variables:
+    BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/aws-ecs:$CI_COMMIT_SHA"
   script:
     - docker build -t "$BUILD_IMAGE_NAME" -f "aws/ecs/Dockerfile" --build-arg BASE_VERSION="$CI_COMMIT_SHA" .
   dependencies:
@@ -11,7 +10,11 @@ build aws ecs image:
 
 test aws ecs command:
   extends: .test-command
+  variables:
+    BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/aws-ecs:$CI_COMMIT_SHA"
   script: aws ecs help
 
 release aws ecs:
   extends: .release-tag
+  variables:
+    BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/aws-ecs:$CI_COMMIT_SHA"

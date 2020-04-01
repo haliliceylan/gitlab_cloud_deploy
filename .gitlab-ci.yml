@@ -4,9 +4,6 @@ stages:
 - test
 - release
 
-variables:
-  BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHA"
-
 .docker: &docker
   image: docker:19.03-git
   services:

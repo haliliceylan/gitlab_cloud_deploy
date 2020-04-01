@@ -1,5 +1,5 @@
 ARG  BASE_VERSION=latest
-FROM registry.gitlab.com/gitlab-org/cloud_deploy/aws-base:${BASE_VERSION}
+FROM registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:${BASE_VERSION}
 
 # Install jq package
 RUN apt-get update -y && apt-get install -y jq
