@@ -34,10 +34,12 @@ shell check:
   script:
     - shellcheck aws/src/bin/*
 
-test aws command:
+test commands:
   stage: test
   image: $BUILD_IMAGE_NAME
-  script: aws --version
+  script: 
+    - aws --version
+    - jq --version
 
 # Release stage
 
