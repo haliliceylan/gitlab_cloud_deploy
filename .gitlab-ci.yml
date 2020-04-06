@@ -40,6 +40,8 @@ test commands:
   script: 
     - aws --version
     - jq --version
+    - groff --version
+    - bc --version
 
 # Release stage
 
