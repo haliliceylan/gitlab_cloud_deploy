@@ -13,6 +13,9 @@ test aws commands for cloud deploy:
   script: 
     - aws --version
     - aws ecs help
+    - groff --version
+    - jq --version
+    - bc --version
 
 release cloud deploy:
   extends: .release-tag

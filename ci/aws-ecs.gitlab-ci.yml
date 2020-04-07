@@ -10,7 +10,11 @@ test aws ecs command:
   extends: .test-command
   variables:
     BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/aws-ecs:$CI_COMMIT_SHA"
-  script: aws ecs help
+  script:
+    - jq --version
+    - bc --version
+    - aws ecs help
+
 
 release aws ecs:
   extends: .release-tag

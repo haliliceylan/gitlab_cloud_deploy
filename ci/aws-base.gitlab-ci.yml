@@ -10,9 +10,9 @@ test aws command:
   extends: .test-command
   variables:
     BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/aws-base:$CI_COMMIT_SHA"
-  script: 
+  script:
     - aws --version
-    - jq --version
+    - groff --version
 
 release aws base:
   extends: .release-tag

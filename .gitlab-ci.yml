@@ -30,11 +30,6 @@ shell check:
 .test-command: &test-command
   stage: test
   image: $BUILD_IMAGE_NAME
-  script: 
-    - aws --version
-    - jq --version
-    - groff --version
-    - bc --version
 
 # Release stage
 .release-tag: &release-tag
