@@ -1,9 +1,7 @@
 FROM ubuntu:latest
 
-COPY aws/src/bin/* /usr/local/bin/
-
 # Install packages
-RUN apt-get update -y && apt-get install -y curl unzip groff jq bc
+RUN apt-get update -y && apt-get install -y curl unzip groff
 
 # Download and unzip install
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
