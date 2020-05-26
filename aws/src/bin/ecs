@@ -7,8 +7,7 @@ update_task_definition() {
   local image_repository
   local image_tag
   local new_image_name
-  local current_task
-  local task_memory
+  local task
   local current_container_definitions
   local new_container_definitions
   local new_task_definition
@@ -24,19 +23,48 @@ update_task_definition() {
   fi
 
   new_image_name="${image_repository}:${image_tag}"
-  current_task=$(aws ecs describe-task-definition --task-definition "$CI_AWS_ECS_TASK_DEFINITION")
-  task_memory=$(echo "$current_task" | jq '.taskDefinition.memory' | bc)
-  current_container_definitions=$(echo "$current_task" | jq '.taskDefinition.containerDefinitions')
+  task=$(aws ecs describe-task-definition --task-definition "$CI_AWS_ECS_TASK_DEFINITION")
+  current_container_definitions=$(read_task "$task" 'containerDefinitions')
   new_container_definitions=$(echo "$current_container_definitions" | jq --arg val "$new_image_name" '.[0].image = $val')
 
   # Create new revision of the task definition, with updated image revision.
-  new_task_definition=$(aws ecs register-task-definition --container-definitions "$new_container_definitions" --family "$CI_AWS_ECS_TASK_DEFINITION" --memory "$task_memory")
+  new_task_definition=$(aws ecs register-task-definition \
+                                  --family "$CI_AWS_ECS_TASK_DEFINTION" \
+                                  --task-role-arn $(read_task "$task" 'taskRoleArn' | bc) \
+                                  --execution-role-arn $(read_task "$task" 'executionRoleArn') \
+                                  --network-mode $(read_task "$task" 'networkMode') \
+                                  --volumes $(read_task "$task" 'volumes') \
+                                  --placement-constraints $(read_task "$task" 'placementConstraints') \
+                                  --requires-compatibilities $(read_task "$task" 'requiresCompatibilities') \
+                                  --cpu $(read_task "$task" 'cpu' | bc) \
+                                  --memory $(read_task "$task" 'memory' | bc) \
+                                  --pid-mode $(read_task "$task" 'pidMode') \
+                                  --ipc-mode $(read_task "$task" 'ipcMode') \
+                                  --proxy-configuration $(read_task "$task" 'proxyConfiguration') \
+                                  --inference-accelerators $(read_task "$task" 'inferenceAccelerators') \
+                                  --container-definitions "$new_container_definitions"
+                      )
 
-  new_task_revision=$(echo "$new_task_definition" | jq '.taskDefinition.revision')
+  new_task_revision=$(read_task $new_task_definition 'revision')
 
   # Update ECS service with newly created task defintion revision.
-  aws ecs update-service --cluster "$CI_AWS_ECS_CLUSTER" --service "$CI_AWS_ECS_SERVICE" --task-definition "$CI_AWS_ECS_TASK_DEFINITION":"$new_task_revision"
+  aws ecs update-service \
+            --cluster "$CI_AWS_ECS_CLUSTER" \
+            --service "$CI_AWS_ECS_SERVICE" \
+            --task-definition "$CI_AWS_ECS_TASK_DEFINITION":"$new_task_revision"
+
   return 0
+}
+
+read_task() {
+  local value
+
+  value=$(echo "$1" | jq ".taskDefinition.$2")
+  if [ "$value" = "null" ];then
+    echo ""
+  else
+    echo "$value"
+  fi
 }
 
 ensure_params() {
