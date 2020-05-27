@@ -1,5 +1,7 @@
 FROM ubuntu:latest
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 COPY aws/src/bin/* /usr/local/bin/
 
 # Install packages

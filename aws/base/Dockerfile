@@ -1,5 +1,7 @@
 FROM ubuntu:latest
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 # Install packages
 RUN apt-get update -y && apt-get install -y curl unzip groff
 
