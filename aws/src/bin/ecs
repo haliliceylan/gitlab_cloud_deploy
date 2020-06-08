@@ -12,6 +12,25 @@ update_task_definition() {
   local new_container_definitions
   local new_task_definition
   local new_task_revision
+  local register_task_def_command
+
+  local -A register_task_def_args=( \
+    ['task-role-arn']='taskRoleArn' \
+    ['execution-role-arn']='executionRoleArn' \
+    ['network-mode']='networkMode' \
+    ['cpu']='cpu' \
+    ['memory']='memory' \
+    ['pid-mode']='pidMode' \
+    ['ipc-mode']='ipcMode' \
+  )
+
+  local -A register_task_def_lists=( \
+    ['proxy-configuration']='proxyConfiguration' \
+    ['volumes']='volumes' \
+    ['placement-constraints']='placementConstraints' \
+    ['requires-compatibilities']='requiresCompatibilities' \
+    ['inference-accelerators']='inferenceAccelerators' \
+  )
 
   # The following CI variables are defined in the Auto Build template (https://gitlab.com/gitlab-org/gitlab-foss/blob/master/lib/gitlab/ci/templates/Jobs/Build.gitlab-ci.yml).
   if [[ -z "$CI_COMMIT_TAG" ]]; then
@@ -27,25 +46,24 @@ update_task_definition() {
   current_container_definitions=$(read_task "$task" 'containerDefinitions')
   new_container_definitions=$(echo "$current_container_definitions" | jq --arg val "$new_image_name" '.[0].image = $val')
 
-  # Create new revision of the task definition, with updated image revision.
-  new_task_definition=$(aws ecs register-task-definition \
-                                  --family "$CI_AWS_ECS_TASK_DEFINTION" \
-                                  --task-role-arn $(read_task "$task" 'taskRoleArn' | bc) \
-                                  --execution-role-arn $(read_task "$task" 'executionRoleArn') \
-                                  --network-mode $(read_task "$task" 'networkMode') \
-                                  --volumes $(read_task "$task" 'volumes') \
-                                  --placement-constraints $(read_task "$task" 'placementConstraints') \
-                                  --requires-compatibilities $(read_task "$task" 'requiresCompatibilities') \
-                                  --cpu $(read_task "$task" 'cpu' | bc) \
-                                  --memory $(read_task "$task" 'memory' | bc) \
-                                  --pid-mode $(read_task "$task" 'pidMode') \
-                                  --ipc-mode $(read_task "$task" 'ipcMode') \
-                                  --proxy-configuration $(read_task "$task" 'proxyConfiguration') \
-                                  --inference-accelerators $(read_task "$task" 'inferenceAccelerators') \
-                                  --container-definitions "$new_container_definitions"
-                      )
+  register_task_def_command="aws ecs register-task-definition --family '${CI_AWS_ECS_TASK_DEFINITION}' --container-definitions '${new_container_definitions}'"
 
-  new_task_revision=$(read_task $new_task_definition 'revision')
+  for option in "${!register_task_def_args[@]}"; do
+    value=$(read_task "$task" "${register_task_def_args[$option]}")
+    if [ "$value" != "null" ];then
+      register_task_def_command="${register_task_def_command} --${option} ${value}"
+    fi
+  done
+
+  for option in "${!register_task_def_lists[@]}"; do
+    value=$(read_task "$task" "${register_task_def_lists[$option]}")
+    if [ "$value" != "null" ];then
+      register_task_def_command="${register_task_def_command} --${option} '${value}'"
+    fi
+  done
+
+  new_task_definition=$(eval "$register_task_def_command")
+  new_task_revision=$(read_task "$new_task_definition" 'revision')
 
   # Update ECS service with newly created task defintion revision.
   aws ecs update-service \
@@ -57,14 +75,7 @@ update_task_definition() {
 }
 
 read_task() {
-  local value
-
-  value=$(echo "$1" | jq ".taskDefinition.$2")
-  if [ "$value" = "null" ];then
-    echo ""
-  else
-    echo "$value"
-  fi
+  echo "$1" | jq ".taskDefinition.$2"
 }
 
 ensure_params() {
