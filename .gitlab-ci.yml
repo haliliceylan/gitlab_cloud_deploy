@@ -49,4 +49,3 @@ shell check:
 include:
   - local: /ci/aws-base.gitlab-ci.yml
   - local: /ci/aws-ecs.gitlab-ci.yml
-  - local: /ci/cloud-deploy.gitlab-ci.yml

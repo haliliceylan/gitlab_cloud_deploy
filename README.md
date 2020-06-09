@@ -6,7 +6,9 @@ Docker images for deployments on major cloud platforms (GDC, Azure, AWS)
 
 ### :warning: Deprecation warning
 
-In GitLab 13.1 and later, `registry.gitlab.com/gitlab-org/cloud-deploy:latest` will no longer be available.
+The `registry.gitlab.com/gitlab-org/cloud-deploy:latest` Docker image is deprecated.
+You can still pull it, but it will not be updated, and there will be no official support
+for it.
 
 Please update your CI pipeline configuration to use one of the following images instead:
 - `registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest` to use AWS CLI commands.
