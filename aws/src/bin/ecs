@@ -12,7 +12,7 @@ update_task_definition() {
   local new_container_definitions
   local new_task_definition
   local new_task_revision
-  local register_task_def_command
+  local args=()
 
   local -A register_task_def_args=( \
     ['task-role-arn']='taskRoleArn' \
@@ -22,13 +22,10 @@ update_task_definition() {
     ['memory']='memory' \
     ['pid-mode']='pidMode' \
     ['ipc-mode']='ipcMode' \
-  )
-
-  local -A register_task_def_lists=( \
     ['proxy-configuration']='proxyConfiguration' \
-    ['volumes']='volumes' \
-    ['placement-constraints']='placementConstraints' \
-    ['requires-compatibilities']='requiresCompatibilities' \
+    ['volumes']='volumes[]' \
+    ['placement-constraints']='placementConstraints[]' \
+    ['requires-compatibilities']='requiresCompatibilities[]' \
     ['inference-accelerators']='inferenceAccelerators' \
   )
 
@@ -46,23 +43,17 @@ update_task_definition() {
   current_container_definitions=$(read_task "$task" 'containerDefinitions')
   new_container_definitions=$(echo "$current_container_definitions" | jq --arg val "$new_image_name" '.[0].image = $val')
 
-  register_task_def_command="aws ecs register-task-definition --family '${CI_AWS_ECS_TASK_DEFINITION}' --container-definitions '${new_container_definitions}'"
+  args+=("--family" "${CI_AWS_ECS_TASK_DEFINITION}")
+  args+=("--container-definitions" "${new_container_definitions}")
 
   for option in "${!register_task_def_args[@]}"; do
     value=$(read_task "$task" "${register_task_def_args[$option]}")
-    if [ "$value" != "null" ];then
-      register_task_def_command="${register_task_def_command} --${option} ${value}"
+    if [ -n "$value" ];then
+      args+=("--${option}" "${value}")
     fi
   done
 
-  for option in "${!register_task_def_lists[@]}"; do
-    value=$(read_task "$task" "${register_task_def_lists[$option]}")
-    if [ "$value" != "null" ];then
-      register_task_def_command="${register_task_def_command} --${option} '${value}'"
-    fi
-  done
-
-  new_task_definition=$(eval "$register_task_def_command")
+  new_task_definition=$(aws ecs register-task-definition "${args[@]}")
   new_task_revision=$(read_task "$new_task_definition" 'revision')
 
   # Update ECS service with newly created task defintion revision.
@@ -75,7 +66,13 @@ update_task_definition() {
 }
 
 read_task() {
-  echo "$1" | jq ".taskDefinition.$2"
+  local val
+
+  val=$(echo "$1" | jq -r ".taskDefinition.$2")
+
+  if [ "$val" != "null" ];then
+    echo -n "${val}"
+  fi
 }
 
 ensure_params() {
