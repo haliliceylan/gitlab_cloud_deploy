@@ -40,6 +40,9 @@ update_task_definition() {
 
   new_image_name="${image_repository}:${image_tag}"
   task=$(aws ecs describe-task-definition --task-definition "$CI_AWS_ECS_TASK_DEFINITION")
+
+  ensure_service_if_fargate "$task"
+
   current_container_definitions=$(read_task "$task" 'containerDefinitions')
   new_container_definitions=$(echo "$current_container_definitions" | jq --arg val "$new_image_name" '.[0].image = $val')
 
@@ -88,6 +91,17 @@ ensure_params() {
 
   if [ -z "$CI_AWS_ECS_TASK_DEFINITION" ]; then
     echo "Please set up a CI_AWS_ECS_TASK_DEFINITION variable to your CI job with the name of your AWS ECS task definition as a value."
+    exit 1
+  fi
+}
+
+ensure_service_if_fargate() {
+  local service_launch_type
+
+  service_launch_type=$(read_task "$1" "${register_task_def_args['requires-compatibilities']}")
+
+  if [ "$AUTO_DEVOPS_PLATFORM_TARGET" == "FARGATE" ] && ! [[ "$service_launch_type" =~ "FARGATE" ]]; then
+    echo "Compatibility error: the ECS service you are targeting is not a FARGATE launch type."
     exit 1
   fi
 }
