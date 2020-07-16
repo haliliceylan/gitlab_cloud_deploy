@@ -23,9 +23,9 @@ update_task_definition() {
     ['pid-mode']='pidMode' \
     ['ipc-mode']='ipcMode' \
     ['proxy-configuration']='proxyConfiguration' \
-    ['volumes']='volumes[]' \
-    ['placement-constraints']='placementConstraints[]' \
-    ['requires-compatibilities']='requiresCompatibilities[]' \
+    ['volumes']='volumes' \
+    ['placement-constraints']='placementConstraints' \
+    ['requires-compatibilities']='requiresCompatibilities' \
     ['inference-accelerators']='inferenceAccelerators' \
   )
 
