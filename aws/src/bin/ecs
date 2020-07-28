@@ -39,6 +39,47 @@ update_task_definition() {
   fi
 
   new_image_name="${image_repository}:${image_tag}"
+
+  if [[ -z "$CI_AWS_ECS_TASK_DEFINITION_FILE" ]]; then
+    register_task_definition_from_remote
+  else
+    register_task_definition_from_file
+  fi
+
+  new_task_definition=$(aws ecs register-task-definition "${args[@]}")
+  new_task_revision=$(read_task "$new_task_definition" 'revision')
+  new_task_definition_family=$(read_task "$new_task_definition" 'family')
+
+  # Update ECS service with newly created task defintion revision.
+  aws ecs update-service \
+            --cluster "$CI_AWS_ECS_CLUSTER" \
+            --service "$CI_AWS_ECS_SERVICE" \
+            --task-definition "$new_task_definition_family":"$new_task_revision"
+
+  return 0
+}
+
+read_task() {
+  local val
+
+  val=$(echo "$1" | jq -r ".taskDefinition.$2")
+
+  if [ "$val" == "null" ];then
+    val=$(echo "$1" | jq -r ".$2")
+  fi
+
+  if [ "$val" != "null" ];then
+    echo -n "${val}"
+  fi
+}
+
+register_task_definition_from_file() {
+  ensure_service_if_fargate "$(cat "$CI_AWS_ECS_TASK_DEFINITION_FILE")"
+
+  args+=("--cli-input-json" "file://${CI_AWS_ECS_TASK_DEFINITION_FILE}")
+}
+
+register_task_definition_from_remote() {
   task=$(aws ecs describe-task-definition --task-definition "$CI_AWS_ECS_TASK_DEFINITION")
 
   ensure_service_if_fargate "$task"
@@ -55,27 +96,6 @@ update_task_definition() {
       args+=("--${option}" "${value}")
     fi
   done
-
-  new_task_definition=$(aws ecs register-task-definition "${args[@]}")
-  new_task_revision=$(read_task "$new_task_definition" 'revision')
-
-  # Update ECS service with newly created task defintion revision.
-  aws ecs update-service \
-            --cluster "$CI_AWS_ECS_CLUSTER" \
-            --service "$CI_AWS_ECS_SERVICE" \
-            --task-definition "$CI_AWS_ECS_TASK_DEFINITION":"$new_task_revision"
-
-  return 0
-}
-
-read_task() {
-  local val
-
-  val=$(echo "$1" | jq -r ".taskDefinition.$2")
-
-  if [ "$val" != "null" ];then
-    echo -n "${val}"
-  fi
 }
 
 ensure_params() {
@@ -89,8 +109,9 @@ ensure_params() {
     exit 1
   fi
 
-  if [ -z "$CI_AWS_ECS_TASK_DEFINITION" ]; then
-    echo "Please set up a CI_AWS_ECS_TASK_DEFINITION variable to your CI job with the name of your AWS ECS task definition as a value."
+  if [ -z "$CI_AWS_ECS_TASK_DEFINITION" ] && [ -z "$CI_AWS_ECS_TASK_DEFINITION_FILE" ]; then
+    echo "Please set up a CI_AWS_ECS_TASK_DEFINITION variable to your CI job with the name of your AWS ECS task definition as a value. Alternatively, you can set up a CI_AWS_ECS_TASK_DEFINITION_FILE variable to input a task definition JSON object."
+    echo "Documentation: https://docs.gitlab.com/ee/ci/cloud_deployment/#deploy-your-application-to-the-aws-elastic-container-service-ecs"
     exit 1
   fi
 }
