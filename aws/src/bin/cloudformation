@@ -1,0 +1,58 @@
+#!/bin/bash -e
+
+create_stack() {
+  ensure_create_stack
+
+  local stack_description
+  local stack_status
+  declare -a stack_failed_statuses=("CREATE_FAILED" "ROLLBACK_COMPLETE")
+  declare stack_success_status="CREATE_COMPLETE"
+
+  aws cloudformation create-stack --stack-name "$CI_AWS_CF_STACK_NAME" --template-body file://"$CI_AWS_CF_CREATE_STACK"
+  echo "-> Creation of your AWS CloudFormation stack is in progress..."
+
+  until [[ ${stack_failed_statuses[*]} =~ $stack_status ]] || [ $stack_success_status == "$stack_status" ]
+  do
+    sleep 10
+    stack_description=$(aws cloudformation describe-stacks --stack-name "$CI_AWS_CF_STACK_NAME")
+    stack_status=$($stack_description | jq '.Stack[0].StackStatus')
+  done
+
+  if [ "$stack_success_status" == "$stack_status" ]; then
+    echo "-> The creation of your '$CI_AWS_CF_STACK_NAME' AWS CloudFormation stack has completed:"
+    aws cloudformation describe_stacks --stack-name "$CI_AWS_CF_STACK_NAME"
+  else
+    echo "-> The creation of your '$CI_AWS_CF_STACK_NAME' AWS CloudFormation stack failed:"
+    aws cloudformation describe_stacks --stack-name "$CI_AWS_CF_STACK_NAME"
+    exit 1
+  fi
+
+  return 0
+}
+
+ensure_create_stack() {
+  if [ -z "$CI_AWS_CF_STACK_NAME" ]; then
+    echo "Please set up a CI_AWS_CF_STACK_NAME variable to define a name for your new CloudFormation stack."
+    exit 1
+  fi
+
+  check_if_stack_already_exists
+
+  if [ -z "$CI_AWS_CF_CREATE_STACK" ]; then
+    echo "Please set up a CI_AWS_CF_CREATE_STACK variable to provide a template anatomy to create a stack via AWS CloudFormation."
+    exit 1
+  fi
+}
+
+check_if_stack_already_exists() {
+  if aws cloudformation describe-stacks --stack-name "$CI_AWS_CF_STACK_NAME" &> /dev/null; then
+    echo "-> The '$CI_AWS_CF_STACK_NAME' AWS CloudFormation stack already exists. Existing job now."
+    exit 0
+  fi
+}
+
+option=$1
+case $option in
+  create-stack) create_stack ;;
+  *) exit 1 ;;
+esac
