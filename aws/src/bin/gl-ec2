@@ -1,0 +1,114 @@
+#!/bin/bash -e
+
+push_and_deploy() {
+  push_to_s3
+  deploy_to_ec2
+
+  return 0
+}
+
+deploy_to_ec2() {
+  local args=()
+  local application_name
+  local deployment_response
+  local deployment_id
+  local deployment_status
+  local deployment_description
+  local deployment_failed="Failed"
+  local deployment_success="Succeeded"
+
+  ensure_params_for_deploy_to_ec2
+
+  # Creation of deployment to EC2.
+  args+=("--cli-input-json" "file://${CI_AWS_EC2_DEPLOYMENT_FILE}")
+
+  deployment_response=$(aws deploy create-deployment "${args[@]}")
+  deployment_id=$(echo "$deployment_response" | jq -r '.deploymentId')
+
+  echo "$deployment_response"
+  echo "Deploying to your EC2 instance now..."
+
+  monitor_deployment
+
+  if [ "$deployment_status" == "$deployment_success" ]; then
+    echo "Your deployment to your EC2 instance has now completed successfully."
+  else
+    echo "Your deployment to your EC2 instance has failed:"
+    echo "$deployment_description"
+    exit 1
+  fi
+
+  return 0
+}
+
+monitor_deployment() {
+  sleep 10
+  get_deployment_status
+
+  if [ "$deployment_status" != "$deployment_failed" ] && [ "$deployment_status" != "$deployment_success" ]; then
+    monitor_deployment
+  fi
+}
+
+get_deployment_status() {
+  deployment_description=$(aws deploy get-deployment --deployment-id "$deployment_id")
+  deployment_status=$(echo "$deployment_description" | jq -r '.deploymentInfo.status')
+}
+
+push_to_s3() {
+  ensure_params_for_push_to_s3
+
+  echo "Pushing artifact to your S3 bucket now..."
+
+  local args=()
+  local local_source
+  local s3_target_location
+
+  local_source=$(jq -r '.source' < "$CI_AWS_S3_PUSH_FILE")
+  s3_target_location=$(jq -r '.s3Location' < "$CI_AWS_S3_PUSH_FILE")
+
+  args+=("--application-name" "$application_name" "--s3-location" "$s3_target_location")
+  cd "${CI_PROJECT_DIR}/$local_source"
+
+  aws deploy push "${args[@]}" &> /dev/null
+
+  return 0
+}
+
+ensure_params_for_push_to_s3() {
+  if [ -z "$CI_AWS_S3_PUSH_FILE" ]; then
+    echo "Please set up a CI_AWS_S3_PUSH_FILE variable to input a JSON object to push your artifact to your S3 bucket."
+    echo "Documentation: https://docs.gitlab.com/ee/ci/cloud_deployment"
+    exit 1
+  fi
+
+  application_name=$(jq -r '.applicationName' < "$CI_AWS_S3_PUSH_FILE")
+
+  if [ -z "$application_name" ]; then
+    echo "Please provide an 'Application Name' attribute in your CI_AWS_S3_PUSH_FILE JSON object."
+    exit 1
+  fi
+}
+
+ensure_params_for_deploy_to_ec2() {
+  if [ -z "$CI_AWS_EC2_DEPLOYMENT_FILE" ]; then
+    echo "Please set up a CI_AWS_EC2_DEPLOYMENT_FILE variable to input a JSON object to create your deployment to EC2."
+    echo "Documentation: https://docs.gitlab.com/ee/ci/cloud_deployment"
+    exit 1
+  fi
+
+  application_name=$(jq -r '.applicationName' < "$CI_AWS_EC2_DEPLOYMENT_FILE")
+
+  if [ -z "$application_name" ]; then
+    echo "Please provide an 'Application Name' attribute in your CI_AWS_EC2_DEPLOYMENT_FILE JSON object."
+    exit 1
+  fi
+}
+
+option=$1
+case $option in
+  push-and-deploy) push_and_deploy ;;
+  push-to-s3) push_to_s3 ;;
+  deploy-to-ec2) deploy_to_ec2 ;;
+  *) exit 1 ;;
+esac

@@ -49,4 +49,5 @@ shell check:
 include:
   - local: /ci/aws-base.gitlab-ci.yml
   - local: /ci/aws-ecs.gitlab-ci.yml
+  - local: /ci/aws-ec2.gitlab-ci.yml
   - local: /ci/aws-cloudformation.gitlab-ci.yml

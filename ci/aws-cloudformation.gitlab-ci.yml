@@ -15,7 +15,6 @@ test aws cloudformation command:
     - bc --version
     - aws cloudformation help
 
-
 release aws cloudformation:
   extends: .release-tag
   variables:

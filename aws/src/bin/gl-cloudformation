@@ -1,0 +1,73 @@
+#!/bin/bash -e
+
+create_stack() {
+  ensure_create_stack
+
+  if aws cloudformation describe-stacks --stack-name "$CI_AWS_CF_STACK_NAME" &> /dev/null; then
+    echo "The '$CI_AWS_CF_STACK_NAME' AWS CloudFormation stack already exists."
+  else
+    local stack_description
+    local stack_status
+    local args=()
+    local stack_creation_success="CREATE_COMPLETE"
+    local stack_creation_in_progress="CREATE_IN_PROGRESS"
+
+    # Creation of the stack
+    args+=("--stack-name" "$CI_AWS_CF_STACK_NAME")
+    args+=("--template-body" "file://$CI_AWS_CF_CREATE_STACK_FILE")
+
+    # When IAM profile is mentioned in the template, then a "--capabilities" option must be passed in.
+    if (jq -r '.Resources' | jq -c 'paths' | grep 'IamInstanceProfile') < "$CI_AWS_CF_CREATE_STACK_FILE" &> /dev/null; then
+      args+=("--capabilities" "CAPABILITY_IAM")
+    fi
+
+    aws cloudformation create-stack "${args[@]}"
+
+    echo "Creation of your AWS CloudFormation stack is in progress..."
+
+    monitor_stack_creation
+
+    if [ "$stack_creation_success" == "$stack_status" ]; then
+      echo "The creation of your '$CI_AWS_CF_STACK_NAME' AWS CloudFormation stack has completed:"
+      aws cloudformation describe-stacks --stack-name "$CI_AWS_CF_STACK_NAME"
+    else
+      echo "The creation of your '$CI_AWS_CF_STACK_NAME' AWS CloudFormation stack failed:"
+      aws cloudformation describe-stacks --stack-name "$CI_AWS_CF_STACK_NAME"
+      exit 1
+    fi
+  fi
+
+  return 0
+}
+
+monitor_stack_creation() {
+  sleep 10
+  get_stack_status
+
+  if [ "$stack_creation_in_progress" == "$stack_status" ]; then
+    monitor_stack_creation
+  fi
+}
+
+get_stack_status() {
+  stack_description=$(aws cloudformation describe-stacks --stack-name "$CI_AWS_CF_STACK_NAME")
+  stack_status=$(echo "$stack_description" | jq -r '.Stacks[0].StackStatus')
+}
+
+ensure_create_stack() {
+  if [ -z "$CI_AWS_CF_STACK_NAME" ]; then
+    echo "Please set up a CI_AWS_CF_STACK_NAME variable to define a name for your new CloudFormation stack."
+    exit 1
+  fi
+
+  if [ -z "$CI_AWS_CF_CREATE_STACK_FILE" ]; then
+    echo "Please set up a CI_AWS_CF_CREATE_STACK_FILE variable to provide a template anatomy to create a stack via AWS CloudFormation."
+    exit 1
+  fi
+}
+
+option=$1
+case $option in
+  create-stack) create_stack ;;
+  *) exit 1 ;;
+esac

@@ -1,0 +1,22 @@
+build aws ec2 image:
+  extends: .build
+  stage: build
+  variables:
+    BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/aws-ec2:$CI_COMMIT_SHA"
+  script:
+    - docker build -t "$BUILD_IMAGE_NAME" -f "aws/ec2/Dockerfile" --build-arg BASE_VERSION="$CI_COMMIT_SHA" .
+
+test aws ec2 command:
+  extends: .test-command
+  variables:
+    BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/aws-ec2:$CI_COMMIT_SHA"
+  script:
+    - jq --version
+    - bc --version
+    - aws ec2 help
+
+release aws ec2:
+  extends: .release-tag
+  variables:
+    BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/aws-ec2:$CI_COMMIT_SHA"
+    IMAGE_NAME_FOR_REGISTRY: "$CI_REGISTRY_IMAGE/aws-ec2"
