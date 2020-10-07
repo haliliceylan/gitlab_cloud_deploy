@@ -3,6 +3,8 @@ stages:
 - build
 - test
 - release
+- prepare-post-release
+- post-release
 
 .docker: &docker
   image: docker:19.03-git
@@ -45,6 +47,49 @@ shell check:
     - docker push "$IMAGE_NAME_FOR_REGISTRY:$CI_COMMIT_TAG"
   only:
     - tags
+
+prepare release notes:
+  <<: *docker
+  stage: prepare-post-release
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - echo "$CI_REGISTRY_IMAGE"
+    - docker pull "$CI_REGISTRY_IMAGE":latest
+    - digest=$(docker inspect --format='{{index .RepoDigests 0}}' "$CI_REGISTRY_IMAGE":latest)
+    - |
+      cat >release-description.txt <<EOL
+      Pull the new image using \`latest\` tag:
+      \`\`\`bash
+      docker pull ${CI_REGISTRY_IMAGE}:latest
+      \`\`\`
+      or by using its digest for this release:
+      \`\`\`bash
+      docker pull ${digest}
+      \`\`\`
+      What's new:
+      - \<insert new feature description here>
+      - ...
+      EOL
+  artifacts:
+    paths:
+      - release-description.txt
+
+create release notes:
+  stage: post-release
+  image: registry.gitlab.com/gitlab-org/release-cli
+  needs:
+    - job: prepare release notes
+      artifacts: true
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - echo "running release from $CI_COMMIT_TAG"
+    - export RELEASE_DESCRIPTION=$(cat release-description.txt)
+    - echo "$RELEASE_DESCRIPTION"
+    - >
+      release-cli create --name "Release $CI_COMMIT_TAG" --description "$RELEASE_DESCRIPTION"
+      --tag-name $CI_COMMIT_TAG --ref $CI_COMMIT_TAG
 
 include:
   - local: /ci/aws-base.gitlab-ci.yml
