@@ -15,8 +15,8 @@ test aws cloudformation command:
     - bc --version
     - aws cloudformation help
 
-release aws cloudformation:
-  extends: .release-tag
+publish aws cloudformation:
+  extends: .publish-tag
   variables:
     BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/aws-cloudformation:$CI_COMMIT_SHA"
     IMAGE_NAME_FOR_REGISTRY: "$CI_REGISTRY_IMAGE/aws-cloudformation"

@@ -15,8 +15,8 @@ test aws ec2 command:
     - bc --version
     - aws ec2 help
 
-release aws ec2:
-  extends: .release-tag
+publish aws ec2:
+  extends: .publish-tag
   variables:
     BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/aws-ec2:$CI_COMMIT_SHA"
     IMAGE_NAME_FOR_REGISTRY: "$CI_REGISTRY_IMAGE/aws-ec2"
