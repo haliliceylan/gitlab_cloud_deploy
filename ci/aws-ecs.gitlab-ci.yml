@@ -16,8 +16,8 @@ test aws ecs command:
     - aws ecs help
 
 
-release aws ecs:
-  extends: .release-tag
+publish aws ecs:
+  extends: .publish-tag
   variables:
     BUILD_IMAGE_NAME: "$CI_REGISTRY_IMAGE/aws-ecs:$CI_COMMIT_SHA"
     IMAGE_NAME_FOR_REGISTRY: "$CI_REGISTRY_IMAGE/aws-ecs"
