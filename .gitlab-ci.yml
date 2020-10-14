@@ -54,19 +54,21 @@ prepare release notes:
   rules:
     - if: $CI_COMMIT_TAG
   script:
-    - echo "$CI_REGISTRY_IMAGE"
-    - docker pull "$CI_REGISTRY_IMAGE":latest
-    - digest=$(docker inspect --format='{{index .RepoDigests 0}}' "$CI_REGISTRY_IMAGE":latest)
+    - echo "Pull the latest images provided by this project using the following snippets:" > release-description.txt
     - |
-      cat >release-description.txt <<EOL
-      Pull the new image using \`latest\` tag:
-      \`\`\`bash
-      docker pull ${CI_REGISTRY_IMAGE}:latest
-      \`\`\`
-      or by using its digest for this release:
+      for platform in base cloudformation ec2 ecs
+      do
+      docker pull "$CI_REGISTRY_IMAGE"/aws-"$platform":latest
+      digest=$(docker inspect --format='{{index .RepoDigests 0}}' "$CI_REGISTRY_IMAGE"/aws-"$platform":latest)
+      cat >>release-description.txt <<EOL
+      - \`aws-"${platform}"\` image:
       \`\`\`bash
       docker pull ${digest}
       \`\`\`
+      EOL
+      done
+    - |
+      cat >>release-description.txt <<EOL
       What's new:
       - \<insert new feature description here>
       - ...
