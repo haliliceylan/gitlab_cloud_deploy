@@ -61,7 +61,7 @@ prepare release notes:
       docker pull "$CI_REGISTRY_IMAGE"/aws-"$platform":latest
       digest=$(docker inspect --format='{{index .RepoDigests 0}}' "$CI_REGISTRY_IMAGE"/aws-"$platform":latest)
       cat >>release-description.txt <<EOL
-      - \`aws-"${platform}"\` image:
+      - \`aws-${platform}\` image:
       \`\`\`bash
       docker pull ${digest}
       \`\`\`
