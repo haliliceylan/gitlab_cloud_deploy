@@ -13,6 +13,7 @@ update_task_definition() {
   local new_task_definition
   local new_task_revision
   local args=()
+  local service_task_count
 
   local -A register_task_def_args=( \
     ['task-role-arn']='taskRoleArn' \
@@ -50,6 +51,13 @@ update_task_definition() {
   new_task_revision=$(read_task "$new_task_definition" 'revision')
   new_task_definition_family=$(read_task "$new_task_definition" 'family')
 
+  # Making sure that we at least have one running task (even if desiredCount gets updated again with new task definition below)
+  service_task_count=$(aws ecs describe-services --cluster "$CI_AWS_ECS_CLUSTER" --services "$CI_AWS_ECS_SERVICE" --query "services[0].desiredCount")
+
+  if [[ $service_task_count == 0 ]]; then
+    aws ecs update-service --cluster "$CI_AWS_ECS_CLUSTER" --service "$CI_AWS_ECS_SERVICE" --desired-count 1
+  fi
+
   # Update ECS service with newly created task defintion revision.
   aws ecs update-service \
             --cluster "$CI_AWS_ECS_CLUSTER" \
@@ -57,6 +65,23 @@ update_task_definition() {
             --task-definition "$new_task_definition_family":"$new_task_revision"
 
   return 0
+}
+
+stop_task() {
+  ensure_params_for_stop
+
+  local current_tasks
+
+  current_tasks=$(aws ecs list-tasks --cluster "$CI_AWS_ECS_CLUSTER" --service-name "$CI_AWS_ECS_SERVICE" --query "taskArns")
+
+  if [[ $current_tasks != "null" ]]; then
+    for task in $(echo "$current_tasks" | jq -r '.[]'); do
+      aws ecs stop-task --cluster "$CI_AWS_ECS_CLUSTER" --task "$task" --reason 'Stopping GitLab review app'
+    done
+
+    # Remove capability for the service to spin up new services automatically, after previous one(s) stopped.
+    aws ecs update-service --cluster "$CI_AWS_ECS_CLUSTER" --service "$CI_AWS_ECS_SERVICE" --desired-count 0
+  fi
 }
 
 read_task() {
@@ -99,19 +124,27 @@ register_task_definition_from_remote() {
 }
 
 ensure_params() {
+  ensure_params_base
+
+  if [ -z "$CI_AWS_ECS_TASK_DEFINITION" ] && [ -z "$CI_AWS_ECS_TASK_DEFINITION_FILE" ]; then
+    echo "Please set up a CI_AWS_ECS_TASK_DEFINITION variable to your CI job with the name of your AWS ECS task definition as a value. Alternatively, you can set up a CI_AWS_ECS_TASK_DEFINITION_FILE variable to input a task definition JSON object."
+    echo "Documentation: https://docs.gitlab.com/ee/ci/cloud_deployment/#deploy-your-application-to-the-aws-elastic-container-service-ecs"
+    exit 1
+  fi
+}
+
+ensure_params_for_stop() {
+  ensure_params_base
+}
+
+ensure_params_base() {
   if [ -z "$CI_AWS_ECS_CLUSTER" ]; then
-    echo "Please set up a CI_AWS_ECS_CLUSTER variable to your CI job with the name of the AWS ECS cluster your are targetting for deployment."
+    echo "Please set up a CI_AWS_ECS_CLUSTER variable to your CI job with the name of the AWS ECS cluster your are targetting."
     exit 1
   fi
 
   if [ -z "$CI_AWS_ECS_SERVICE" ]; then
     echo "Please set up a CI_AWS_ECS_SERVICE variable to your CI job with the name of the service your AWS ECS cluster uses."
-    exit 1
-  fi
-
-  if [ -z "$CI_AWS_ECS_TASK_DEFINITION" ] && [ -z "$CI_AWS_ECS_TASK_DEFINITION_FILE" ]; then
-    echo "Please set up a CI_AWS_ECS_TASK_DEFINITION variable to your CI job with the name of your AWS ECS task definition as a value. Alternatively, you can set up a CI_AWS_ECS_TASK_DEFINITION_FILE variable to input a task definition JSON object."
-    echo "Documentation: https://docs.gitlab.com/ee/ci/cloud_deployment/#deploy-your-application-to-the-aws-elastic-container-service-ecs"
     exit 1
   fi
 }
@@ -130,5 +163,6 @@ ensure_service_if_fargate() {
 option=$1
 case $option in
   update-task-definition) update_task_definition ;;
+  stop-task) stop_task ;;
   *) exit 1 ;;
 esac
