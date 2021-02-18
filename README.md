@@ -8,6 +8,11 @@ The `registry.gitlab.com/gitlab-org/cloud-deploy:latest` Docker image is depreca
 You can still pull it, but it will not be updated, and there will be no official support
 for it.
 
+Update your CI pipeline configuration to use one of the following images instead:
+
+- `registry.gitlab.com/gitlab-org/cloud-deploy/aws-base:latest` to use AWS CLI commands.
+- `registry.gitlab.com/gitlab-org/cloud-deploy/aws-ecs:latest` to deploy your application to AWS ECS.
+
 ### AWS
 
 Instructions to pull our AWS Docker images can be found in the project's
